@@ -57,6 +57,27 @@ jobs:
           name: tfplan
           path: tfplan
 
+  infacost:
+    name: "Cost Estimation (Infracost)"
+    runs-on: ubuntu-latest
+    env:
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install Infracost
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
+
+      - name: Generate Infracost JSON
+        run: infracost breakdown --path . --format json --out-file infracost-base.json
+
+      - name: Post Cost Estimate to Summary
+        run: |
+          echo "### 💸 Cost Estimation Summary" >> $GITHUB_STEP_SUMMARY
+          infracost output --path infracost-base.json --format table >> $GITHUB_STEP_SUMMARY
+
   terraform-apply:
     name: "Terraform Apply"
     runs-on: ubuntu-latest
