@@ -82,6 +82,19 @@ jobs:
           name: tfplan
           path: tfplan
 
+  security-scan-app:
+    name: "Snyk Security Scan"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      - name: Snyk Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
   deploy:
     name: "Apply & App Deploy"
     runs-on: ubuntu-latest
