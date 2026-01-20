@@ -112,7 +112,7 @@ jobs:
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_CHANNEL: deployments # שם הערוץ שיצרת (ללא #)
+          SLACK_CHANNEL: all-studying
           SLACK_COLOR: ${{ job.status == 'success' && 'good' || 'danger' }}
-          SLACK_MESSAGE: "Terraform Apply Finished with status: ${{ job.status }} 🚀"
+          SLACK_MESSAGE: "Terraform Apply Finished with status: ${{ job.status }}"
           SLACK_TITLE: "Deployment Report"

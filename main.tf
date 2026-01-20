@@ -30,6 +30,12 @@ resource "docker_container" "nginx_srv" {
     internal = 80
     external = var.external_port
   }
+  log_driver = "awslogs"
+  log_opts = {
+    "awslogs-region"        = "us-east-1"
+    "awslogs-group"         = aws_cloudwatch_log_group.app_logs.name
+    "awslogs-stream" = "tutorial_server"
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "state_security" {
@@ -39,4 +45,9 @@ resource "aws_s3_bucket_public_access_block" "state_security" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+resource "aws_cloudwatch_log_group" "app_logs" {
+  name = "/ecs/my-app-logs"
+  retention_in_days = 7
 }
