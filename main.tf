@@ -142,65 +142,46 @@ resource "aws_security_group" "ecs_sg" {
   }
 }
 
-resource "aws_cloudwatch_log_metric_filter" "error_filter" {
-  name           = "ErrorCountFilter"
-  pattern        = "ERROR"
-  log_group_name = aws_cloudwatch_log_group.app_logs.name
+resource "aws_db_subnet_group" "default" {
+  name       = "main-db-subnet-group"
+  subnet_ids = data.aws_subnets.default.ids
 
-  metric_transformation {
-    name      = "ErrorCount"
-    namespace = "MyApplication"
-    value     = "1"
-  }
-}
-
-#trivy:ignore:AVD-AWS-0095
-#trivy:ignore:AVD-AWS-0136
-resource "aws_sns_topic" "alerts_topic" {
-  name = "app-error-alerts"
-  kms_master_key_id = "alias/aws/sns"
-}
-
-resource "aws_cloudwatch_metric_alarm" "error_alarm" {
-  alarm_name          = "HighErrorRateAlarm"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = "1"
-  metric_name         = "ErrorCount"
-  namespace           = "MyApplication"
-  period              = "60"
-  statistic           = "Sum"
-  threshold           = "1"
-  alarm_description   = "This alarm triggers when ERROR is detected in logs"
-  alarm_actions       = [aws_sns_topic.alerts_topic.arn]
-}
-
-resource "aws_iam_role" "chatbot_role" {
-  name = "aws-chatbot-slack-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "chatbot.amazonaws.com"
-      }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "chatbot_read_only" {
-  role       = aws_iam_role.chatbot_role.name
-  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
-}
-
-resource "aws_chatbot_slack_channel_configuration" "slack_alerts" {
-  configuration_name = "slack-alerts-config"
-  iam_role_arn       = aws_iam_role.chatbot_role.arn
-  slack_channel_id   = "C0AAKKX42SU"
-  slack_team_id = "T0A9JV1CF6X"
-  sns_topic_arns     = [aws_sns_topic.alerts_topic.arn]
   tags = {
-    Environment = "production"
+    Name = "My DB subnet group"
   }
+}
+
+resource "aws_security_group" "rds_sg" {
+  name        = "rds-sg"
+  description = "Allow access to RDS from ECS"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_db_instance" "postgres" {
+  allocated_storage      = 20
+  db_name                = "myappdb"
+  engine                 = "postgres"
+  engine_version         = "15"
+  instance_class         = "db.t3.micro"
+  username               = "dbadmin"
+  password               = "password123"
+  parameter_group_name   = "default.postgres15"
+  db_subnet_group_name   = aws_db_subnet_group.default.name
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  skip_final_snapshot    = true
+  publicly_accessible    = false
 }
