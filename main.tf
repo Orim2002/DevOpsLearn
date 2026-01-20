@@ -86,6 +86,13 @@ resource "aws_ecs_task_definition" "app_task" {
           hostPort      = 80
         }
       ]
+      environment = [
+        { name = "DB_HOST",     value = aws_db_instance.postgres.address },
+        { name = "DB_PORT",     value = "5432" },
+        { name = "DB_NAME",     value = aws_db_instance.postgres.db_name },
+        { name = "DB_USER",     value = aws_db_instance.postgres.username },
+        { name = "DB_PASSWORD", value = aws_db_instance.postgres.password }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -189,6 +196,38 @@ resource "aws_db_instance" "postgres" {
   storage_encrypted = true
 }
 
+resource "aws_cloudwatch_log_metric_filter" "error_filter" {
+  name           = "ErrorCountFilter"
+  pattern        = "ERROR"
+  log_group_name = aws_cloudwatch_log_group.app_logs.name
+
+  metric_transformation {
+    name      = "ErrorCount"
+    namespace = "MyApplication"
+    value     = "1"
+  }
+}
+
+#trivy:ignore:AVD-AWS-0095
+#trivy:ignore:AVD-AWS-0136
+resource "aws_sns_topic" "alerts_topic" {
+  name              = "app-error-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_cloudwatch_metric_alarm" "error_alarm" {
+  alarm_name          = "HighErrorRateAlarm"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "ErrorCount"
+  namespace           = "MyApplication"
+  period              = "60"
+  statistic           = "Sum"
+  threshold           = "1"
+  alarm_description   = "This alarm triggers when ERROR is detected in logs"
+  alarm_actions       = [aws_sns_topic.alerts_topic.arn]
+}
+
 resource "aws_budgets_budget" "cost_monitor" {
   name              = "monthly-free-tier-budget"
   budget_type       = "COST"
@@ -201,14 +240,6 @@ resource "aws_budgets_budget" "cost_monitor" {
     threshold                  = 100
     threshold_type             = "PERCENTAGE"
     notification_type          = "ACTUAL"
-    subscriber_email_addresses = ["o2002mm@gmail.com"] # החלף במייל שלך
-  }
-
-  notification {
-    comparison_operator        = "GREATER_THAN"
-    threshold                  = 100
-    threshold_type             = "PERCENTAGE"
-    notification_type          = "FORECASTED"
-    subscriber_email_addresses = ["o2002mm@gmail.com"] # החלף במייל שלך
+    subscriber_email_addresses = ["o2002mm@gmail.com"]
   }
 }
