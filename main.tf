@@ -141,3 +141,32 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks      = ["0.0.0.0/0"]
   }
 }
+
+resource "aws_cloudwatch_log_metric_filter" "error_filter" {
+  name           = "ErrorCountFilter"
+  pattern        = "ERROR"
+  log_group_name = aws_cloudwatch_log_group.app_logs.name
+
+  metric_transformation {
+    name      = "ErrorCount"
+    namespace = "MyApplication"
+    value     = "1"
+  }
+}
+
+resource "aws_sns_topic" "alerts_topic" {
+  name = "app-error-alerts"
+}
+
+resource "aws_cloudwatch_metric_alarm" "error_alarm" {
+  alarm_name          = "HighErrorRateAlarm"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "ErrorCount"
+  namespace           = "MyApplication"
+  period              = "60"
+  statistic           = "Sum"
+  threshold           = "1"
+  alarm_description   = "This alarm triggers when ERROR is detected in logs"
+  alarm_actions       = [aws_sns_topic.alerts_topic.arn]
+}
