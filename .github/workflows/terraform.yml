@@ -97,6 +97,9 @@ jobs:
           role-to-assume: arn:aws:iam::767398080395:role/GitHubActionsRole
           aws-region: "us-east-1"
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
       - name: Terraform Apply
         run: |
           terraform init
