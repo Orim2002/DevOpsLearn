@@ -243,3 +243,13 @@ resource "aws_budgets_budget" "cost_monitor" {
     subscriber_email_addresses = ["o2002mm@gmail.com"]
   }
 }
+
+resource "aws_ecr_repository" "app_repo" {
+  name                 = "my-app-repo"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
