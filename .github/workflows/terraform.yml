@@ -147,5 +147,5 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_CHANNEL: all-studying
-          SLACK_MESSAGE: "Deploy Finished! App is live at: http://${{ env.APP_IP }}"
+          SLACK_MESSAGE: "Deploy Finished! App is live at: ${{ env.APP_URL }}"
           SLACK_TITLE: "Deployment Success 🚀"
