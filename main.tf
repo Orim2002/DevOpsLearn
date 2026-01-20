@@ -99,9 +99,24 @@ resource "aws_security_group" "ecs_sg" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
+    description = "Allow HTTPS outbound traffic"
+    from_port   = 443
+    to_port     = 443
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    description      = "Allow DNS outbound traffic"
+    from_port        = 53
+    to_port          = 53
+    protocol         = "udp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+  egress {
+    description      = "Allow DNS outbound traffic"
+    from_port        = 53
+    to_port          = 53
+    protocol         = "udp"
+    cidr_blocks      = ["0.0.0.0/0"]
   }
 }
