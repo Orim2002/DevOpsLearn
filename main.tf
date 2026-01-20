@@ -154,9 +154,20 @@ resource "aws_cloudwatch_log_metric_filter" "error_filter" {
   }
 }
 
+resource "aws_kms_key" "sns_key" {
+  description             = "KMS key for SNS topic encryption"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_alias" "sns_key_alias" {
+  name          = "alias/sns-alerts-key"
+  target_key_id = aws_kms_key.sns_key.key_id
+}
+
 resource "aws_sns_topic" "alerts_topic" {
   name = "app-error-alerts"
-  kms_master_key_id = "alias/aws/sns"
+  kms_master_key_id = aws_kms_key.sns_key.arn
 }
 
 resource "aws_cloudwatch_metric_alarm" "error_alarm" {
