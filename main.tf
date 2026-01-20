@@ -82,8 +82,8 @@ resource "aws_ecs_task_definition" "app_task" {
       essential = true
       portMappings = [
         {
-          containerPort = 8080
-          hostPort      = 8080
+          containerPort = var.external_port
+          hostPort      = var.external_port
         }
       ]
       environment = [
