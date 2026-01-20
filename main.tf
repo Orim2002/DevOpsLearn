@@ -147,6 +147,14 @@ resource "aws_security_group" "ecs_sg" {
     protocol         = "udp"
     cidr_blocks      = ["0.0.0.0/0"]
   }
+
+  egress {
+    description = "Allow outbound traffic to RDS"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    security_groups = [aws_security_group.rds_sg.id]
+  }
 }
 
 resource "aws_db_subnet_group" "default" {
