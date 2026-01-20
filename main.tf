@@ -147,14 +147,16 @@ resource "aws_security_group" "ecs_sg" {
     protocol         = "udp"
     cidr_blocks      = ["0.0.0.0/0"]
   }
+}
 
-  egress {
-    description = "Allow outbound traffic to RDS"
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    security_groups = [aws_security_group.rds_sg.id]
-  }
+resource "aws_security_group_rule" "ecs_to_rds_egress" {
+  type                     = "egress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ecs_sg.id
+  source_security_group_id = aws_security_group.rds_sg.id
+  description              = "Allow ECS to communicate with RDS"
 }
 
 resource "aws_db_subnet_group" "default" {
