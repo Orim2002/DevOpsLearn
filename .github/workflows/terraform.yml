@@ -85,7 +85,7 @@ jobs:
   deploy:
     name: "Apply & App Deploy"
     runs-on: ubuntu-latest
-    needs: security-scan
+    needs: terraform-plan
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     steps:
       - name: Checkout Code
@@ -105,7 +105,7 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-      
+
       - name: Build and Push to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -113,7 +113,7 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-      
+
       - name: Update ECS and Get IP
         id: get-ip
         run: |
