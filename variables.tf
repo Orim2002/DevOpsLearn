@@ -15,3 +15,9 @@ variable "nginx_version" {
   type        = string
   default     = "latest"
 }
+
+variable "app_version" {
+  description = "The version (tag) of the docker image to deploy"
+  type        = string
+  default     = "latest"
+}

@@ -1,7 +1,7 @@
 const { Pool } = require("pg");
 const express = require("express");
 const app = express();
-const port = 80;
+const port = 8080;
 
 const pool = new Pool({
   host: process.env.DB_HOST,

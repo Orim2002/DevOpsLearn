@@ -77,13 +77,13 @@ resource "aws_ecs_task_definition" "app_task" {
 
   container_definitions = jsonencode([
     {
-      name      = "nginx-app"
-      image     = "${aws_ecr_repository.app_repo.repository_url}:v2"
+      name      = "node-app"
+      image     = "${aws_ecr_repository.app_repo.repository_url}:${var.app_version}"
       essential = true
       portMappings = [
         {
-          containerPort = 80
-          hostPort      = 80
+          containerPort = 8080
+          hostPort      = 8080
         }
       ]
       environment = [
@@ -124,8 +124,8 @@ resource "aws_security_group" "ecs_sg" {
   vpc_id = data.aws_vpc.default.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 8080
+    to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
