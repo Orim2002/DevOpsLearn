@@ -246,7 +246,7 @@ resource "aws_budgets_budget" "cost_monitor" {
 
 resource "aws_ecr_repository" "app_repo" {
   name                 = "my-app-repo"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
   force_delete         = true
 
   image_scanning_configuration {
