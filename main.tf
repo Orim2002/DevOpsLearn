@@ -156,6 +156,7 @@ resource "aws_cloudwatch_log_metric_filter" "error_filter" {
 
 resource "aws_sns_topic" "alerts_topic" {
   name = "app-error-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_cloudwatch_metric_alarm" "error_alarm" {
@@ -169,4 +170,35 @@ resource "aws_cloudwatch_metric_alarm" "error_alarm" {
   threshold           = "1"
   alarm_description   = "This alarm triggers when ERROR is detected in logs"
   alarm_actions       = [aws_sns_topic.alerts_topic.arn]
+}
+
+resource "aws_iam_role" "chatbot_role" {
+  name = "aws-chatbot-slack-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "chatbot.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "chatbot_read_only" {
+  role       = aws_iam_role.chatbot_role.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+resource "aws_chatbot_slack_channel_configuration" "slack_alerts" {
+  configuration_name = "slack-alerts-config"
+  iam_role_arn       = aws_iam_role.chatbot_role.arn
+  slack_channel_id   = "C0AAKKX42SU"
+  slack_team_id = "T0A9JV1CF6X"
+  sns_topic_arns     = [aws_sns_topic.alerts_topic.arn]
+  tags = {
+    Environment = "production"
+  }
 }
