@@ -18,6 +18,17 @@ provider "aws" {
     region = "us-east-1"
 }
 
+data "aws_vpc" "default" {
+  default = true
+}
+
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "state_security" {
   bucket = "orima-bucket"
 
@@ -87,9 +98,23 @@ resource "aws_ecs_task_definition" "app_task" {
   ])
 }
 
+resource "aws_ecs_service" "main" {
+  name            = "my-app-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app_task.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = data.aws_subnets.default.ids
+    assign_public_ip = true
+    security_groups  = [aws_security_group.ecs_sg.id]
+  }
+}
+
 resource "aws_security_group" "ecs_sg" {
   name   = "ecs-sg"
-  vpc_id = "vpc-088aee7c6ec1d3400"
+  vpc_id = data.aws_vpc.default.id
 
   ingress {
     from_port   = 80
