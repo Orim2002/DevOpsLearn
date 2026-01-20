@@ -27,6 +27,27 @@ jobs:
           exit-code: "1"
           severity: "HIGH,CRITICAL"
 
+  infracost:
+    name: "Cost Estimation (Infracost)"
+    runs-on: ubuntu-latest
+    env:
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install Infracost
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
+
+      - name: Generate Infracost JSON
+        run: infracost breakdown --path . --format json --out-file infracost-base.json
+
+      - name: Post Cost Estimate to Summary
+        run: |
+          echo "### 💸 Cost Estimation Summary" >> $GITHUB_STEP_SUMMARY
+          infracost output --path infracost-base.json --format table >> $GITHUB_STEP_SUMMARY
+
   terraform-plan:
     name: "Terraform Plan"
     runs-on: ubuntu-latest
@@ -61,32 +82,10 @@ jobs:
           name: tfplan
           path: tfplan
 
-  infacost:
-    name: "Cost Estimation (Infracost)"
+  deploy:
+    name: "Apply & App Deploy"
     runs-on: ubuntu-latest
-    env:
-      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Install Infracost
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
-
-      - name: Generate Infracost JSON
-        run: infracost breakdown --path . --format json --out-file infracost-base.json
-
-      - name: Post Cost Estimate to Summary
-        run: |
-          echo "### 💸 Cost Estimation Summary" >> $GITHUB_STEP_SUMMARY
-          infracost output --path infracost-base.json --format table >> $GITHUB_STEP_SUMMARY
-
-  terraform-apply:
-    name: "Terraform Apply"
-    runs-on: ubuntu-latest
-    needs: terraform-plan
-    environment: production
+    needs: security-scan
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     steps:
       - name: Checkout Code
@@ -98,21 +97,38 @@ jobs:
           role-to-assume: arn:aws:iam::767398080395:role/GitHubActionsRole
           aws-region: "us-east-1"
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-
-      - name: Terraform Init
-        run: terraform init
-
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
       
+      - name: Build and Push to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: my-app-repo
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+      
+      - name: Update ECS and Get IP
+        id: get-ip
+        run: |
+          aws ecs update-service --cluster my-cluster --service my-app-service --force-new-deployment --region us-east-1
+          echo "Waiting for new task..."
+          sleep 60
+          TASK_ARN=$(aws ecs list-tasks --cluster my-cluster --service my-app-service --query 'taskArns[0]' --output text --region us-east-1)
+          ENI_ID=$(aws ecs describe-tasks --cluster my-cluster --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text --region us-east-1)
+          PUBLIC_IP=$(aws ec2 describe-network-interfaces --network-interface-ids $ENI_ID --query 'NetworkInterfaces[0].Association.PublicIp' --output text --region us-east-1)
+          echo "APP_IP=$PUBLIC_IP" >> $GITHUB_ENV
       - name: Send Slack Notification
         if: always()
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_CHANNEL: all-studying
-          SLACK_COLOR: ${{ job.status == 'success' && 'good' || 'danger' }}
-          SLACK_MESSAGE: "Terraform Apply Finished with status: ${{ job.status }}"
-          SLACK_TITLE: "Deployment Report"
+          SLACK_MESSAGE: "Deploy Finished! App is live at: http://${{ env.APP_IP }}"
+          SLACK_TITLE: "Deployment Success 🚀"
