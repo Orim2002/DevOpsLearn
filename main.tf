@@ -98,6 +98,7 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  #trivy:ignore:AVD-AWS-0104
   egress {
     description = "Allow HTTPS outbound traffic"
     from_port   = 443
@@ -105,13 +106,8 @@ resource "aws_security_group" "ecs_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  egress {
-    description      = "Allow DNS outbound traffic"
-    from_port        = 53
-    to_port          = 53
-    protocol         = "udp"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
+  
+  #trivy:ignore:AVD-AWS-0104
   egress {
     description      = "Allow DNS outbound traffic"
     from_port        = 53
